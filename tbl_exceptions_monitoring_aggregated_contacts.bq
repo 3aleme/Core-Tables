@@ -1,0 +1,360 @@
+create or replace temp table aggregated_contacts as 
+
+with deduplicated_contacts as (
+select
+  intervalvalue_15
+, reportid	
+, reportname
+, queuegroupid
+, queuegroupname
+, 'EU' as region
+, 'UK' as store
+, 'Phone' as type
+, presented
+, forecasted
+, abandoned
+, maxqueuesize
+, slanumerator
+, sladenominator
+, chtnumerator
+, chtdenominator
+, asanumerator
+, asadenominator
+, maxwait
+, disconnected
+, inboundhandled
+, readynumerator
+, notreadynumerator
+, shrinkauxnumerator
+, loggeddenominator
+, occnumerator
+, occdenominator
+, ahtnumerator
+, ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr`
+where reportid = 11 and queuegroupid =21 
+
+union all 
+
+select
+  intervalvalue_15
+, reportid	
+, reportname
+, queuegroupid
+, queuegroupname
+, 'EU' as region
+, 'DE' as store
+, 'Phone' as type
+, presented
+, forecasted
+, abandoned
+, maxqueuesize
+, slanumerator
+, sladenominator
+, chtnumerator
+, chtdenominator
+, asanumerator
+, asadenominator
+, maxwait
+, disconnected
+, inboundhandled
+, readynumerator
+, notreadynumerator
+, shrinkauxnumerator
+, loggeddenominator
+, occnumerator
+, occdenominator
+, ahtnumerator
+, ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr`
+where reportid = 12 and queuegroupid =22 
+
+union all 
+
+select
+  intervalvalue_15
+, reportid	
+, reportname
+, queuegroupid
+, queuegroupname
+, 'EU' as region
+, 'UK' as store
+, 'Chat' as type
+, presented
+, forecasted
+, abandoned
+, maxqueuesize
+, slanumerator
+, sladenominator
+, chtnumerator
+, chtdenominator
+, asanumerator
+, asadenominator
+, maxwait
+, disconnected
+, inboundhandled
+, readynumerator
+, notreadynumerator
+, shrinkauxnumerator
+, loggeddenominator
+, occnumerator
+, occdenominator
+, ahtnumerator
+, ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr`
+where reportid = 78 and queuegroupid = 63
+
+union all 
+
+select
+  intervalvalue_15
+, reportid	
+, reportname
+, queuegroupid
+, queuegroupname
+, 'EU' as region
+, 'DE' as store
+, 'Chat' as type
+, presented
+, forecasted
+, abandoned
+, maxqueuesize
+, slanumerator
+, sladenominator
+, chtnumerator
+, chtdenominator
+, asanumerator
+, asadenominator
+, maxwait
+, disconnected
+, inboundhandled
+, readynumerator
+, notreadynumerator
+, shrinkauxnumerator
+, loggeddenominator
+, occnumerator
+, occdenominator
+, ahtnumerator
+, ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr`
+where reportid = 89 and queuegroupid = 66 
+
+union all 
+
+select
+  intervalvalue_15
+, reportid	
+, reportname
+, queuegroupid
+, queuegroupname
+, 'EU' as region
+, 'UK' as store
+, 'Email' as type
+, presented
+, forecasted
+, abandoned
+, maxqueuesize
+, slanumerator
+, sladenominator
+, chtnumerator
+, chtdenominator
+, asanumerator
+, asadenominator
+, maxwait
+, disconnected
+, inboundhandled
+, readynumerator
+, notreadynumerator
+, shrinkauxnumerator
+, loggeddenominator
+, occnumerator
+, occdenominator
+, ahtnumerator
+, ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr`
+where reportid = 18 and queuegroupid = 54 
+
+union all 
+
+select
+  intervalvalue_15
+, reportid	
+, reportname
+, queuegroupid
+, queuegroupname
+, 'EU' as region
+, 'DE' as store
+, 'Email' as type
+, presented
+, forecasted
+, abandoned
+, maxqueuesize
+, slanumerator
+, sladenominator
+, chtnumerator
+, chtdenominator
+, asanumerator
+, asadenominator
+, maxwait
+, disconnected
+, inboundhandled
+, readynumerator
+, notreadynumerator
+, shrinkauxnumerator
+, loggeddenominator
+, occnumerator
+, occdenominator
+, ahtnumerator
+, ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr`
+where reportid = 19 and queuegroupid = 55
+
+union all 
+
+select
+  c.intervalvalue_15
+, c.reportid	
+, c.reportname
+, c.queuegroupid
+, c.queuegroupname
+, 'NA' as region
+, cr.Country as store
+, 'Phone' as type
+, c.presented
+, c.forecasted
+, c.abandoned
+, c.maxqueuesize
+, c.slanumerator
+, c.sladenominator
+, c.chtnumerator
+, c.chtdenominator
+, c.asanumerator
+, c.asadenominator
+, c.maxwait
+, c.disconnected
+, c.inboundhandled
+, c.readynumerator
+, c.notreadynumerator
+, c.shrinkauxnumerator
+, c.loggeddenominator
+, c.occnumerator
+, c.occdenominator
+, c.ahtnumerator
+, c.ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr` c
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_pl_contact_queuegroup` cr on c.queuegroupid = cr.QueueGroupID and c.queuegroupname = cr.QueueGroupName 
+where reportid = 4
+
+union all 
+
+select
+  c.intervalvalue_15
+, c.reportid	
+, c.reportname
+, c.queuegroupid
+, c.queuegroupname
+, 'NA' as region
+, cr.Country as store
+, 'Chat' as type
+, c.presented
+, c.forecasted
+, c.abandoned
+, c.maxqueuesize
+, c.slanumerator
+, c.sladenominator
+, c.chtnumerator
+, c.chtdenominator
+, c.asanumerator
+, c.asadenominator
+, c.maxwait
+, c.disconnected
+, c.inboundhandled
+, c.readynumerator
+, c.notreadynumerator
+, c.shrinkauxnumerator
+, c.loggeddenominator
+, c.occnumerator
+, c.occdenominator
+, c.ahtnumerator
+, c.ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr` c 
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_pl_contact_queuegroup` cr on c.queuegroupid = cr.QueueGroupID and c.queuegroupname = cr.QueueGroupName 
+where reportid = 79
+
+union all 
+
+select
+  c.intervalvalue_15
+, c.reportid	
+, c.reportname
+, c.queuegroupid
+, c.queuegroupname
+, 'NA' as region
+, cr.Country as store
+, 'Email' as type
+, c.presented
+, c.forecasted
+, c.abandoned
+, c.maxqueuesize
+, c.slanumerator
+, c.sladenominator
+, c.chtnumerator
+, c.chtdenominator
+, c.asanumerator
+, c.asadenominator
+, c.maxwait
+, c.disconnected
+, c.inboundhandled
+, c.readynumerator
+, c.notreadynumerator
+, c.shrinkauxnumerator
+, c.loggeddenominator
+, c.occnumerator
+, c.occdenominator
+, c.ahtnumerator
+, c.ahtdenominator
+from `wf-gcp-us-ae-fcst-strds-prod.wfm_reporting.tbl_ccpr` c 
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_pl_contact_queuegroup` cr on c.queuegroupid = cr.QueueGroupID and c.queuegroupname = cr.QueueGroupName 
+where reportid = 14
+)
+
+select 
+  cast(intervalvalue_15 as date) as ContactDate
+, reportid	
+, reportname
+, queuegroupid
+, queuegroupname
+, store
+, region
+, type as contact_type
+, sum(presented) as presented
+, sum(forecasted) as forecasted
+, sum(abandoned) as abandoned
+, max(maxqueuesize) as maxqueuesize
+, sum(slanumerator) as slanumerator
+, sum(sladenominator) as sladenominator
+, sum(chtnumerator) as chtnumerator
+, sum(chtdenominator) as chtdenominator
+, sum(asanumerator) as asanumerator
+, sum(asadenominator) as asadenominator
+, max(maxwait) as maxwait
+, sum(disconnected) as disconnected
+, sum(inboundhandled) as inboundhandled
+, sum(readynumerator) as readynumerator
+, sum(notreadynumerator) as notreadynumerator
+, sum(shrinkauxnumerator) as shrinkauxnumerator
+, sum(loggeddenominator) as loggeddenominator
+, sum(occnumerator) as occnumerator
+, sum(occdenominator) as occdenominator
+, sum(ahtnumerator) as ahtnumerator
+, sum(ahtdenominator) as ahtdenominator
+from deduplicated_contacts
+where cast(intervalvalue_15 as date)>= date_sub(current_date(), interval 60 day)
+group by 1,2,3,4,5,6,7,8;
+
+
+delete from wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_exceptions_monitoring_aggregated_contacts
+where ContactDate  >= date_sub(current_date(), interval 60 day);
+
+insert into wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_exceptions_monitoring_aggregated_contacts
+select * from aggregated_contacts;
