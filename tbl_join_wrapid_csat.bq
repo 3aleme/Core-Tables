@@ -1,0 +1,81 @@
+create or replace table `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_join_wrapid_csat` as
+
+with phone_csat as(
+select
+  coalesce(s.WrapID,-1) as ContactID
+, 'Phone' as Ctype
+, s.SurveySentForEmployeeID
+, ed.Team as CSATTeam
+, sum(case when s.SurveySatisfactionScore = 5 then 1 else 0 end) as PerfectCSATs
+, count(*) as CSATResponses 
+, avg(s.SurveySatisfactionScore) as CSAT_Avg
+from `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_fact_survey` s
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_dim_employee_detail` ed on ed.EmID = s.SurveySentForEmployeeID and ed.DateValue = cast(s.SurveySentDatetime as date)
+where CurrentFlag = True and s.SurveySatisfactionScore is not null
+group by 1,2,3,4
+)
+
+, chat_csat as (
+select 
+  coalesce(j.OrderSurveyID, -1) as ContactID
+, 'Chat' as Ctype
+, c.employeeID as SurveySentForEmployeeID
+, ed.Team as CSATTeam
+, sum(case when c.CSATScore = 5 then 1 else 0 end) as PerfectCSATs
+, count(*) as CSATResponses 
+, avg(c.CSATScore) as CSAT_Avg
+from `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_chat_conversation_queue_detail` c 
+left join `wf-gcp-us-ae-bulk-prod.csn_waychat.tbl_join_customer_contact_order_survey` j on  j.CustomerContactID= c.conversationqueueid 
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_dim_employee_detail` ed on ed.EmID = c.employeeID and ed.DateValue = cast(c.CSATDateTimeScored as date)
+where c.chat_type != 'Non-Responder' and c.CSATScore is not null --Exclude NonResponders
+group by 1,2,3,4
+)
+
+, email_csat as (
+select 
+  coalesce(j.OrderSurveyID, -1) as ContactID
+, 'Email' as Ctype
+, c.employeeID as SurveySentForEmployeeID
+, ed.Team as CSATTeam
+, sum(case when c.CSATScore = 5 then 1 else 0 end) as PerfectCSATs
+, count(*) as CSATResponses 
+, avg(c.CSATScore) as CSAT_Avg
+from `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_email_conversation_queue_detail` c 
+left join `wf-gcp-us-ae-bulk-prod.csn_waychat.tbl_join_customer_contact_order_survey` j on  j.CustomerContactID= c.conversationqueueid 
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_dim_employee_detail` ed on ed.EmID = c.employeeID and ed.DateValue = cast(c.CSATDateTimeScored as date)
+where c.CSATScore is not null
+group by 1,2,3,4
+)
+
+select
+  ContactID
+, Ctype
+, SurveySentForEmployeeID
+, CSATTeam
+, PerfectCSATs
+, CSATResponses 
+, CSAT_Avg 
+from phone_csat
+
+union all 
+select   
+  ContactID
+, Ctype
+, SurveySentForEmployeeID
+, CSATTeam
+, PerfectCSATs
+, CSATResponses 
+, CSAT_Avg  
+from chat_csat
+
+union all 
+
+select 
+  ContactID
+, Ctype
+, SurveySentForEmployeeID
+, CSATTeam
+, PerfectCSATs
+, CSATResponses 
+, CSAT_Avg 
+from email_csat;
