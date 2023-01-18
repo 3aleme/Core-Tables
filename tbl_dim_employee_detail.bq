@@ -1,0 +1,97 @@
+create or replace temp table employee_detail as 
+select 
+  e.EmID
+, e.EmployeeName
+, e.DateValue
+, e.StartDate
+, e.MgrEmID
+, e.RankingsMgrEmID
+, e.RankingsMgr2EmID
+, e.RankingsSrMgrEmID
+, e.WgID
+, w.WgName
+, w.WgActive
+, e.TitleID
+, e.LocationID
+, e.SkillLevel
+, e.EuSSCFlag
+, e.UsSSCFlag
+, e.SiteName
+, e.Country
+, e.RegionName
+, e.EmployeeCustomerID
+, e.WebUserName
+, e.samaccountname
+, e.EmailAddress
+, e.TitleName
+, e.Team
+, e.ServiceFlag
+, w.is_customer_services
+, w.is_frontline
+from `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_dim_employee_detail` e
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_pl_workgroups` w on e.WgID = w.WgID
+where DateValue >= date_sub (current_date(), interval 30 day);
+
+
+merge into wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_dim_employee_detail as t
+using employee_detail as s 
+on t.EmID = s.EmID and t.DateValue = s.DateValue
+when not matched then insert values (
+  s.EmID
+, s.EmployeeName
+, s.DateValue
+, s.StartDate
+, s.MgrEmID
+, s.RankingsMgrEmID
+, s.RankingsMgr2EmID
+, s.RankingsSrMgrEmID
+, s.WgID
+, s.WgName
+, s.WgActive
+, s.TitleID
+, s.LocationID
+, s.SkillLevel
+, s.EuSSCFlag
+, s.UsSSCFlag
+, s.SiteName
+, s.Country
+, s.RegionName
+, s.EmployeeCustomerID
+, s.WebUserName
+, s.samaccountname
+, s.EmailAddress
+, s.TitleName
+, s.Team
+, s.ServiceFlag
+, s.is_customer_services
+, s.is_frontline
+)
+when matched then update set 
+  t.EmID = s.EmID
+, t.EmployeeName = s.EmployeeName
+, t.DateValue = s.DateValue
+, t.StartDate = s.StartDate
+, t.MgrEmID = s.MgrEmID
+, t.RankingsMgrEmID = s.RankingsMgrEmID
+, t.RankingsMgr2EmID = s.RankingsMgr2EmID
+, t.RankingsSrMgrEmID = s.RankingsSrMgrEmID
+, t.WgID = s.WgID
+, t.WgName = s.WgName
+, t.WgActive = s.WgActive
+, t.TitleID = s.TitleID
+, t.LocationID = s.LocationID
+, t.SkillLevel = s.SkillLevel
+, t.EuSSCFlag = s.EuSSCFlag
+, t.UsSSCFlag = s.UsSSCFlag
+, t.SiteName = s.SiteName
+, t.Country = s.Country
+, t.RegionName = s.RegionName
+, t.EmployeeCustomerID = s.EmployeeCustomerID
+, t.WebUserName = s.WebUserName
+, t.samaccountname = s.samaccountname
+, t.EmailAddress = s.EmailAddress
+, t.TitleName = s.TitleName
+, t.Team = s.Team
+, t.ServiceFlag = s.ServiceFlag
+, t.is_customer_services = s.is_customer_services
+, t.is_frontline = s.is_frontline;
