@@ -1,0 +1,191 @@
+create or replace table wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_fact_wrap   --To overwrite add this 
+--cluster by Region, Store, Contact_Method, WrapBucket  as  --To overwrite add this
+create or replace temp table contacts as --To overwrite remove this
+
+
+with fact_contact as (
+select 
+  fc.factContactSeq
+, fc.ContactID
+, fc.OrderID
+, fc.ContactMethodSkey
+, fc.ContactAppTypeSkey
+, fc.StoreSkey
+, fc.ShipClassSkey
+, fc.ContactTypePrimarySkey
+, fc.ContactTypeDetailedSkey
+, fc.ContactSourceSkey
+, fc.OrderSourceSkey
+, fc.ContactDateTime
+, fc.ContactCount
+, fc.ContactType
+, fc.WrapEmID
+, fc.CreateDateTime
+, fc.UpdateDateTime
+, fc.HashValue
+, fc.CurrentFlag
+, fc.ContactDateInt
+, fc.SvyFlags
+, fc.TwoDayResRate
+, fc.TwoDayResRateEU
+, fc.WizardWrap
+, fc.ContactedByEmID
+, fc.FourteenDayResRate
+, fc.WrapSettleDate
+, row_number() over (partition by fc.OrderID order by fc.ContactDateTime) as OrderContactCount --Extends fact_contact with a column that tracks the number contacts received for a single OrID
+from `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_fact_contact` fc
+--where cast(ContactDateTime as date) >= "2020-01-01" --To overwrite add this
+where cast(ContactDateTime as date) >= date_sub (current_date(), interval 30 day) --To overwrite remove this
+and fc.CurrentFlag is True
+)
+
+
+select 
+  coalesce(fc.ContactID, -1) as ContactID
+, fc.ContactDateTime
+, fc.OrderID
+, o.OrderDateTime
+, fc.OrderContactCount
+, fc.StoreSkey
+, case when st.storesubentityname in ('United States', 'Canada') then 'NA'
+       when st.storesubentityname in ('Germany', 'UK') then 'EU'
+       else 'Other'
+     end as Region
+, case when st.storesubentityname = 'United States' then 'US'
+        when st.storesubentityname = 'UK' then 'UK'
+        when st.storesubentityname = 'Canada' then 'CA'
+        when st.storesubentityname = 'Germany' then 'DE'
+        when st.storesubentityname = 'Ireland' then 'IE'	
+        else 'Other' 
+        end as Store
+, fc.ContactSourceSkey
+, s.ContactSourceName
+, fc.ContactMethodSkey
+, cm.ContactMethodName
+,  case when cm.ContactMethodName = 'Chat' then 'Chat'
+        when cm.ContactMethodName = 'Email' then 'Email'
+        when cm.ContactMethodName = 'Phone' then 'Phone'
+        when cm.ContactMethodName = 'SMS' then 'SMS'
+        else 'Other'
+        end as Contact_Method 
+, fc.ContactAppTypeSkey
+, app.ContactAppTypeName
+, fc.ContactTypePrimarySkey
+, ct.ContactTypeLevel1Description as WrapPrimaryReason
+, fc.ContactTypeDetailedSkey	
+, ct.ContactTypeLevel2Description as WrapSecondaryReason 
+, case when ct.ContactTypeLevel1Description like '%WIMS%' then '1.WIMS'
+       when ct.ContactTypeLevel1Description like '%Report%Problem%' then '2.Report_Problem'
+       when ct.ContactTypeLevel1Description like '%Billing%Credit%' then '3.Billing_Credits'
+       when ct.ContactTypeLevel1Description like '%Returns%' then '4.Returns'
+       when ct.ContactTypeLevel1Description like '%Cancellations%' then '5.Cancellations'
+       when ct.ContactTypeLevel1Description like '%Order%Changes%' then '6.OrderChanges'
+       when ct.ContactTypeLevel1Description is null then null
+       else '7.Other'
+    end as WrapBucket
+, coalesce(fc.WrapEmID, -1) as WrapEmID --To deal with nulls coming from vw_fact_contact
+, case when ed.is_customer_services is True and ed.is_frontline is True then "Frontline" when ed.is_customer_services is True and ed.is_frontline is False then 'Non-Frontline' else 'Non-Services' end as Team --To be revisited after double checking if SelfService source is correct
+, ifnull(ed.Team, 'Other') as TeamDetailed
+, fc.CreateDateTime
+/*
+, case when fc.OrderContactCount = 1 -- Adjust to the OrID Granularity (which the right granularity for FCR)
+          and o.orderid is not null -- Considers only orders that actually match with fact_order table
+          and fc.ContactMethodSkey in (0,1,2) then True -- Considers Wraps from Email, Phone and Chat only
+       else False 
+  end as Relevant_For_FCR 
+, case when coalesce(o.FirstCallResolutionFlag_All, False) is True then 1 else 0 end as FCR --nulls are only coming when there is no match with o.orderid we can fill them with False without complications
+*/
+, case when st.storesubentityname in ('Germany', 'UK') and fc.TwoDayResRateEU != -1 then True
+     when st.storesubentityname in ('United States', 'Canada') and fc.TwoDayResRate != -1 then True
+     else False end as RelevantForTDRR
+, case when st.storesubentityname in ('Germany', 'UK') and fc.TwoDayResRateEU != -1 then fc.TwoDayResRateEU 
+     when st.storesubentityname in ('United States', 'Canada') and fc.TwoDayResRate != -1 then fc.TwoDayResRate
+     else 0 end as TDRR
+, fc.WizardWrap	
+, case when cs.ContactID  is not null then True else False end as Relevant_For_CSAT --Considers only wraps with Actual CSAT record
+, sum(cs.PerfectCSATs) as Total_PerfectCSATs
+, sum(cs.CSATResponses) as Total_CSATResponses
+, avg(cs.CSAT_Avg) as Average_CSAT_Score
+, array_agg(struct(cs.SurveySentForEmployeeID, cs.CSATTeam, cs.PerfectCSATs, cs.CSATResponses, cs.CSAT_Avg)) as CSAT
+from fact_contact fc
+left join `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_dim_store` st on st.storeskey = fc.StoreSkey
+left join `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_fact_order` o on o.orderid = fc.orderid and o.CurrentFlag = True 
+left join `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_dim_contact_type` ct ON coalesce(fc.ContactTypeDetailedSkey, -1) = coalesce(ct.ContactTypeSkey, -1)
+left join `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_dim_contact_method` cm on cm.contactmethodskey = fc.contactmethodskey
+left join `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_dim_contact_source` s on s.ContactSourceSkey = fc.ContactSourceSkey
+left join `wf-gcp-us-ae-cs-prod.cs_datawarehouse.vw_dim_contact_app_type` app on app.ContactAppTypeSkey = fc.ContactAppTypeSkey
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_dim_employee_detail` ed on ed.EmID = fc.WrapEmID and ed.DateValue = cast(fc.CreateDateTime as date)
+left join `wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_join_wrapid_csat` cs on cs.ContactID = fc.ContactID 
+group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28;
+
+
+merge into wf-gcp-us-ae-ops-prod.analyticstech_reporting.tbl_fact_wrap as t
+using contacts as s 
+on t.ContactID = s.ContactID
+when not matched then insert values (
+  s.ContactID
+, s.ContactDateTime
+, s.OrderID
+, s.OrderDateTime
+, s.OrderContactCount
+, s.StoreSkey
+, s.Region
+, s.Store
+, s.ContactSourceSkey
+, s.ContactSourceName
+, s.ContactMethodSkey
+, s.ContactMethodName
+, s.Contact_Method
+, s.ContactAppTypeSkey
+, s.ContactAppTypeName
+, s.ContactTypePrimarySkey
+, s.WrapPrimaryReason
+, s.ContactTypeDetailedSkey
+, s.WrapSecondaryReason
+, s.WrapBucket
+, s.WrapEmID
+, s.Team
+, s.TeamDetailed
+, s.CreateDateTime
+, s.RelevantForTDRR
+, s.TDRR
+, s.WizardWrap
+, s.Relevant_For_CSAT
+, s.Total_PerfectCSATs
+, s.Total_CSATResponses
+, s.Average_CSAT_Score
+, s.CSAT
+)
+when matched then update set 
+  t.ContactID = s.ContactID
+, t.ContactDateTime = s.ContactDateTime
+, t.OrderID = s.OrderID
+, t.OrderDateTime = s.OrderDateTime
+, t.OrderContactCount = s.OrderContactCount
+, t.StoreSkey = s.StoreSkey
+, t.Region = s.Region
+, t.Store = s.Store
+, t.ContactSourceSkey = s.ContactSourceSkey
+, t.ContactSourceName = s.ContactSourceName
+, t.ContactMethodSkey = s.ContactMethodSkey
+, t.ContactMethodName = s.ContactMethodName
+, t.Contact_Method = s.Contact_Method
+, t.ContactAppTypeSkey = s.ContactAppTypeSkey
+, t.ContactAppTypeName = s.ContactAppTypeName
+, t.ContactTypePrimarySkey = s.ContactTypePrimarySkey
+, t.WrapPrimaryReason = s.WrapPrimaryReason
+, t.ContactTypeDetailedSkey = s.ContactTypeDetailedSkey
+, t.WrapSecondaryReason = s.WrapSecondaryReason
+, t.WrapBucket = s.WrapBucket
+, t.WrapEmID = s.WrapEmID
+, t.Team = s.Team
+, t.TeamDetailed = s.TeamDetailed
+, t.CreateDateTime = s.CreateDateTime
+, t.RelevantForTDRR = s.RelevantForTDRR
+, t.TDRR = s.TDRR
+, t.WizardWrap = s.WizardWrap
+, t.Relevant_For_CSAT = s.Relevant_For_CSAT
+, t.Total_PerfectCSATs = s.Total_PerfectCSATs
+, t.Total_CSATResponses = s.Total_CSATResponses
+, t.Average_CSAT_Score = s.Average_CSAT_Score
+, t.CSAT = s.CSAT;
